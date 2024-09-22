@@ -14,28 +14,24 @@
     :license: BSD, see LICENSE for more details.
 """
 from __future__ import annotations
-
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
-
 from babel.core import Locale, default_locale
-
 if TYPE_CHECKING:
     from typing_extensions import Literal
-
 DEFAULT_LOCALE = default_locale()
 
 
-def format_list(lst: Sequence[str],
-                style: Literal['standard', 'standard-short', 'or', 'or-short', 'unit', 'unit-short', 'unit-narrow'] = 'standard',
-                locale: Locale | str | None = DEFAULT_LOCALE) -> str:
+def format_list(lst: Sequence[str], style: Literal['standard',
+    'standard-short', 'or', 'or-short', 'unit', 'unit-short', 'unit-narrow'
+    ]='standard', locale: (Locale | str | None)=DEFAULT_LOCALE) ->str:
     """
     Format the items in `lst` as a list.
 
     >>> format_list(['apples', 'oranges', 'pears'], locale='en')
     u'apples, oranges, and pears'
     >>> format_list(['apples', 'oranges', 'pears'], locale='zh')
-    u'apples\u3001oranges\u548cpears'
+    u'apples、oranges和pears'
     >>> format_list(['omena', 'peruna', 'aplari'], style='or', locale='fi')
     u'omena, peruna tai aplari'
 
@@ -70,25 +66,4 @@ def format_list(lst: Sequence[str],
     :param style: the style to format the list with. See above for description.
     :param locale: the locale
     """
-    locale = Locale.parse(locale)
-    if not lst:
-        return ''
-    if len(lst) == 1:
-        return lst[0]
-
-    if style not in locale.list_patterns:
-        raise ValueError(
-            f'Locale {locale} does not support list formatting style {style!r} '
-            f'(supported are {sorted(locale.list_patterns)})',
-        )
-    patterns = locale.list_patterns[style]
-
-    if len(lst) == 2:
-        return patterns['2'].format(*lst)
-
-    result = patterns['start'].format(lst[0], lst[1])
-    for elem in lst[2:-1]:
-        result = patterns['middle'].format(result, elem)
-    result = patterns['end'].format(result, lst[-1])
-
-    return result
+    pass

@@ -1,16 +1,11 @@
 from __future__ import annotations
-
 from babel.messages import frontend
-
 try:
-    # See: https://setuptools.pypa.io/en/latest/deprecated/distutils-legacy.html
     from setuptools import Command
-
     try:
         from setuptools.errors import BaseError, OptionError, SetupError
-    except ImportError:  # Error aliases only added in setuptools 59 (2021-11).
+    except ImportError:
         OptionError = SetupError = BaseError = Exception
-
 except ImportError:
     from distutils.cmd import Command
     from distutils.errors import DistutilsSetupError as SetupError
@@ -25,11 +20,7 @@ def check_message_extractors(dist, name, value):
     :param value: the value of the keyword argument
     :raise `DistutilsSetupError`: if the value is not valid
     """
-    assert name == "message_extractors"
-    if not isinstance(value, dict):
-        raise SetupError(
-            'the value of the "message_extractors" parameter must be a dictionary',
-        )
+    pass
 
 
 class compile_catalog(frontend.CompileCatalog, Command):
@@ -100,9 +91,6 @@ class update_catalog(frontend.UpdateCatalog, Command):
     """
 
 
-COMMANDS = {
-    "compile_catalog": compile_catalog,
-    "extract_messages": extract_messages,
-    "init_catalog": init_catalog,
-    "update_catalog": update_catalog,
-}
+COMMANDS = {'compile_catalog': compile_catalog, 'extract_messages':
+    extract_messages, 'init_catalog': init_catalog, 'update_catalog':
+    update_catalog}

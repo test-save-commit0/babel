@@ -1,9 +1,9 @@
 from __future__ import annotations
-
 from babel.core import get_global
 
 
-def get_official_languages(territory: str, regional: bool = False, de_facto: bool = False) -> tuple[str, ...]:
+def get_official_languages(territory: str, regional: bool=False, de_facto:
+    bool=False) ->tuple[str, ...]:
     """
     Get the official language(s) for the given territory.
 
@@ -25,25 +25,11 @@ def get_official_languages(territory: str, regional: bool = False, de_facto: boo
     :return: Tuple of language codes
     :rtype: tuple[str]
     """
-
-    territory = str(territory).upper()
-    allowed_stati = {"official"}
-    if regional:
-        allowed_stati.add("official_regional")
-    if de_facto:
-        allowed_stati.add("de_facto_official")
-
-    languages = get_global("territory_languages").get(territory, {})
-    pairs = [
-        (info['population_percent'], language)
-        for language, info in languages.items()
-        if info.get('official_status') in allowed_stati
-    ]
-    pairs.sort(reverse=True)
-    return tuple(lang for _, lang in pairs)
+    pass
 
 
-def get_territory_language_info(territory: str) -> dict[str, dict[str, float | str | None]]:
+def get_territory_language_info(territory: str) ->dict[str, dict[str, float |
+    str | None]]:
     """
     Get a dictionary of language information for a territory.
 
@@ -68,5 +54,4 @@ def get_territory_language_info(territory: str) -> dict[str, dict[str, float | s
     :return: Language information dictionary
     :rtype: dict[str, dict]
     """
-    territory = str(territory).upper()
-    return get_global("territory_languages").get(territory, {}).copy()
+    pass
