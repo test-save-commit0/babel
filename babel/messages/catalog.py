@@ -357,7 +357,12 @@ class Catalog:
         5
 
         :type: `int`"""
-        pass
+        if self._num_plurals is None:
+            if self.locale:
+                self._num_plurals = get_plural(self.locale)[0]
+            else:
+                self._num_plurals = 2
+        return self._num_plurals
 
     @property
     def plural_expr(self) ->str:
@@ -371,7 +376,12 @@ class Catalog:
         '(n != 1)'
 
         :type: `str`"""
-        pass
+        if self._plural_expr is None:
+            if self.locale:
+                self._plural_expr = get_plural(self.locale)[1]
+            else:
+                self._plural_expr = '(n != 1)'
+        return self._plural_expr
 
     @property
     def plural_forms(self) ->str:
@@ -505,7 +515,10 @@ class Catalog:
                        PO file, if any
         :param context: the message context
         """
-        pass
+        message = Message(id, string, locations, flags, auto_comments,
+                          user_comments, previous_id, lineno, context)
+        self[id] = message
+        return message
 
     def check(self) ->Iterable[tuple[Message, list[TranslationError]]]:
         """Run various validation checks on the translations in the catalog.
@@ -516,7 +529,10 @@ class Catalog:
 
         :rtype: ``generator`` of ``(message, errors)``
         """
-        pass
+        for message in self._messages.values():
+            errors = message.check(catalog=self)
+            if errors:
+                yield message, errors
 
     def get(self, id: _MessageID, context: (str | None)=None) ->(Message | None
         ):
@@ -525,7 +541,8 @@ class Catalog:
         :param id: the message ID
         :param context: the message context, or ``None`` for no context
         """
-        pass
+        key = self._key_for(id, context)
+        return self._messages.get(key)
 
     def delete(self, id: _MessageID, context: (str | None)=None) ->None:
         """Delete the message with the specified ID and context.
@@ -533,7 +550,9 @@ class Catalog:
         :param id: the message ID
         :param context: the message context, or ``None`` for no context
         """
-        pass
+        key = self._key_for(id, context)
+        if key in self._messages:
+            del self._messages[key]
 
     def update(self, template: Catalog, no_fuzzy_matching: bool=False,
         update_header_comment: bool=False, keep_user_comments: bool=True,
@@ -594,7 +613,9 @@ class Catalog:
 
     def _to_fuzzy_match_key(self, key: (tuple[str, str] | str)) ->str:
         """Converts a message key to a string suitable for fuzzy matching."""
-        pass
+        if isinstance(key, tuple):
+            return key[0]
+        return key
 
     def _key_for(self, id: _MessageID, context: (str | None)=None) ->(tuple
         [str, str] | str):
@@ -602,10 +623,25 @@ class Catalog:
         messages, but is a ``(msgid, msgctxt)`` tuple for context-specific
         messages.
         """
-        pass
+        if isinstance(id, (list, tuple)):
+            id = id[0]
+        if context is not None:
+            return (id, context)
+        return id
 
     def is_identical(self, other: Catalog) ->bool:
         """Checks if catalogs are identical, taking into account messages and
         headers.
         """
-        pass
+        if len(self) != len(other):
+            return False
+        
+        for key, message in self._messages.items():
+            if key not in other._messages:
+                return False
+            if not message.is_identical(other._messages[key]):
+                return False
+        
+        return (self.mime_headers == other.mime_headers and
+                self.header_comment == other.header_comment and
+                self.fuzzy == other.fuzzy)
