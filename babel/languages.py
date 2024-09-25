@@ -25,7 +25,22 @@ def get_official_languages(territory: str, regional: bool=False, de_facto:
     :return: Tuple of language codes
     :rtype: tuple[str]
     """
-    pass
+    territory_data = get_global('territory_languages').get(territory, {})
+    official_languages = []
+
+    for lang, info in territory_data.items():
+        status = info.get('official_status')
+        if status == 'official':
+            official_languages.append(lang)
+        elif regional and status == 'official_regional':
+            official_languages.append(lang)
+        elif de_facto and status == 'de_facto_official':
+            official_languages.append(lang)
+
+    # Sort languages by population percentage (descending order)
+    official_languages.sort(key=lambda x: territory_data[x].get('population_percent', 0), reverse=True)
+
+    return tuple(official_languages)
 
 
 def get_territory_language_info(territory: str) ->dict[str, dict[str, float |
@@ -54,4 +69,15 @@ def get_territory_language_info(territory: str) ->dict[str, dict[str, float |
     :return: Language information dictionary
     :rtype: dict[str, dict]
     """
-    pass
+    territory_data = get_global('territory_languages').get(territory, {})
+    result = {}
+
+    for lang, info in territory_data.items():
+        lang_info = {}
+        if 'population_percent' in info:
+            lang_info['population_percent'] = info['population_percent']
+        if 'official_status' in info:
+            lang_info['official_status'] = info['official_status']
+        result[lang] = lang_info
+
+    return result
