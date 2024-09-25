@@ -49,7 +49,12 @@ def list_currencies(locale: (Locale | str | None)=None) ->set[str]:
                    provided, returns the list of all currencies from all
                    locales.
     """
-    pass
+    if locale is None:
+        return set(get_global('currency_names').keys())
+    
+    locale = Locale.parse(locale)
+    currencies = locale.currencies.keys()
+    return set(currencies)
 
 
 def validate_currency(currency: str, locale: (Locale | str | None)=None
@@ -61,7 +66,8 @@ def validate_currency(currency: str, locale: (Locale | str | None)=None
 
     Raises a `UnknownCurrencyError` exception if the currency is unknown to Babel.
     """
-    pass
+    if currency not in list_currencies(locale):
+        raise UnknownCurrencyError(currency)
 
 
 def is_currency(currency: str, locale: (Locale | str | None)=None) ->bool:
@@ -69,7 +75,11 @@ def is_currency(currency: str, locale: (Locale | str | None)=None) ->bool:
 
     This method always return a Boolean and never raise.
     """
-    pass
+    try:
+        validate_currency(currency, locale)
+        return True
+    except UnknownCurrencyError:
+        return False
 
 
 def normalize_currency(currency: str, locale: (Locale | str | None)=None) ->(
@@ -81,7 +91,11 @@ def normalize_currency(currency: str, locale: (Locale | str | None)=None) ->(
 
     Returns None if the currency is unknown to Babel.
     """
-    pass
+    try:
+        validate_currency(currency, locale)
+        return currency.upper()
+    except UnknownCurrencyError:
+        return None
 
 
 def get_currency_name(currency: str, count: (float | decimal.Decimal | None
@@ -98,7 +112,11 @@ def get_currency_name(currency: str, count: (float | decimal.Decimal | None
                   will be pluralized to that number if possible.
     :param locale: the `Locale` object or locale identifier.
     """
-    pass
+    locale = Locale.parse(locale)
+    if count is not None:
+        plural_form = locale.plural_form(count)
+        return locale.currencies.get(currency, {}).get(f'name_other_{plural_form}', currency)
+    return locale.currencies.get(currency, {}).get('name', currency)
 
 
 def get_currency_symbol(currency: str, locale: (Locale | str | None)=LC_NUMERIC
@@ -111,7 +129,8 @@ def get_currency_symbol(currency: str, locale: (Locale | str | None)=LC_NUMERIC
     :param currency: the currency code.
     :param locale: the `Locale` object or locale identifier.
     """
-    pass
+    locale = Locale.parse(locale)
+    return locale.currencies.get(currency, {}).get('symbol', currency)
 
 
 def get_currency_precision(currency: str) ->int:
@@ -124,7 +143,7 @@ def get_currency_precision(currency: str) ->int:
 
     :param currency: the currency code.
     """
-    pass
+    return get_global('currency_fractions').get(currency, {}).get('digits', 2)
 
 
 def get_currency_unit_pattern(currency: str, count: (float | decimal.
@@ -146,7 +165,11 @@ def get_currency_unit_pattern(currency: str, count: (float | decimal.
                   pattern for that number will be returned.
     :param locale: the `Locale` object or locale identifier.
     """
-    pass
+    locale = Locale.parse(locale)
+    if count is not None:
+        plural_form = locale.plural_form(count)
+        return locale.currency_unit_patterns.get(plural_form, '{0} {1}')
+    return locale.currency_unit_patterns.get('other', '{0} {1}')
 
 
 def get_territory_currencies(territory: str, start_date: (datetime.date |
