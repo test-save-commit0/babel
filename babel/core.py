@@ -179,7 +179,10 @@ class Locale:
         :param category: one of the ``LC_XXX`` environment variable names
         :param aliases: a dictionary of aliases for locale identifiers
         """
-        pass
+        locale_string = default_locale(category, aliases)
+        if locale_string:
+            return cls.parse(locale_string)
+        return None
 
     @classmethod
     def negotiate(cls, preferred: Iterable[str], available: Iterable[str],
@@ -204,7 +207,10 @@ class Locale:
         :param available: the list of locale identifiers available
         :param aliases: a dictionary of aliases for locale identifiers
         """
-        pass
+        locale_identifier = negotiate_locale(preferred, available, sep, aliases)
+        if locale_identifier:
+            return cls.parse(locale_identifier)
+        return None
 
     @classmethod
     def parse(cls, identifier: (str | Locale | None), sep: str='_',
