@@ -20,7 +20,27 @@ def check_message_extractors(dist, name, value):
     :param value: the value of the keyword argument
     :raise `DistutilsSetupError`: if the value is not valid
     """
-    pass
+    if not isinstance(value, dict):
+        raise SetupError('The value of "message_extractors" must be a dictionary')
+
+    for module, specs in value.items():
+        if not isinstance(module, str):
+            raise SetupError('The keys in the "message_extractors" dictionary '
+                             'must be strings')
+        if not isinstance(specs, list):
+            raise SetupError('The values in the "message_extractors" dictionary '
+                             'must be lists')
+        for spec in specs:
+            if not isinstance(spec, tuple) or len(spec) != 3:
+                raise SetupError('Each spec in the "message_extractors" dictionary '
+                                 'must be a 3-tuple')
+            pattern, func, options = spec
+            if not isinstance(pattern, str):
+                raise SetupError('The first element in a spec must be a string')
+            if not callable(func) and not isinstance(func, str):
+                raise SetupError('The second element in a spec must be callable or a string')
+            if not isinstance(options, dict):
+                raise SetupError('The third element in a spec must be a dictionary')
 
 
 class compile_catalog(frontend.CompileCatalog, Command):
