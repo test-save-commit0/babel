@@ -72,7 +72,11 @@ def _strip_comment_tags(comments: MutableSequence[str], tags: Iterable[str]):
     """Helper function for `extract` that strips comment tags from strings
     in a list of comment lines.  This functions operates in-place.
     """
-    pass
+    for i, comment in enumerate(comments):
+        for tag in tags:
+            if comment.startswith(tag):
+                comments[i] = comment[len(tag):].strip()
+                break
 
 
 def extract_from_dir(dirname: (str | os.PathLike[str] | None)=None,
@@ -151,7 +155,23 @@ def extract_from_dir(dirname: (str | os.PathLike[str] | None)=None,
                              should return True if the directory is valid.
     :see: `pathmatch`
     """
-    pass
+    if dirname is None:
+        dirname = os.getcwd()
+    
+    if options_map is None:
+        options_map = {}
+
+    for root, dirs, files in os.walk(str(dirname)):
+        if directory_filter and not directory_filter(root):
+            dirs[:] = []
+            continue
+
+        for filename in files:
+            filepath = os.path.join(root, filename)
+            yield from check_and_call_extract_file(
+                filepath, method_map, options_map, callback,
+                keywords, comment_tags, strip_comment_tags, dirname
+            )
 
 
 def check_and_call_extract_file(filepath: (str | os.PathLike[str]),
@@ -189,7 +209,26 @@ def check_and_call_extract_file(filepath: (str | os.PathLike[str]),
     :return: iterable of 5-tuples (filename, lineno, messages, comments, context)
     :rtype: Iterable[tuple[str, int, str|tuple[str], list[str], str|None]
     """
-    pass
+    if dirpath is None:
+        dirpath = os.getcwd()
+    
+    rel_filepath = os.path.relpath(filepath, dirpath)
+
+    for pattern, method in method_map:
+        if pathmatch(pattern, rel_filepath):
+            options = {}
+            for opattern, odict in options_map.items():
+                if pathmatch(opattern, rel_filepath):
+                    options.update(odict)
+            
+            if callback:
+                callback(rel_filepath, method, options)
+            
+            with open(filepath, 'rb') as fileobj:
+                for lineno, message, comments, context in extract_from_file(method, fileobj, keywords, comment_tags, options, strip_comment_tags):
+                    yield (rel_filepath, lineno, message, comments, context)
+            
+            break
 
 
 def extract_from_file(method: _ExtractionMethod, filename: (str | os.
@@ -214,7 +253,8 @@ def extract_from_file(method: _ExtractionMethod, filename: (str | os.
     :returns: list of tuples of the form ``(lineno, message, comments, context)``
     :rtype: list[tuple[int, str|tuple[str], list[str], str|None]
     """
-    pass
+    with open(filename, 'rb') as fileobj:
+        return list(extract(method, fileobj, keywords, comment_tags, options, strip_comment_tags))
 
 
 def extract(method: _ExtractionMethod, fileobj: _FileObj, keywords: Mapping
@@ -260,7 +300,36 @@ def extract(method: _ExtractionMethod, fileobj: _FileObj, keywords: Mapping
     :returns: iterable of tuples of the form ``(lineno, message, comments, context)``
     :rtype: Iterable[tuple[int, str|tuple[str], list[str], str|None]
     """
-    pass
+    if callable(method):
+        func = method
+    elif ':' in method or '.' in method:
+        if ':' not in method:
+            lastdot = method.rfind('.')
+            module, attrname = method[:lastdot], method[lastdot + 1:]
+        else:
+            module, attrname = method.split(':', 1)
+        func = getattr(__import__(module, {}, {}, [attrname]), attrname)
+    else:
+        try:
+            from pkg_resources import working_set
+        except ImportError:
+            pass
+        else:
+            for entry_point in working_set.iter_entry_points(GROUP_NAME, method):
+                func = entry_point.load(require=True)
+                break
+            else:
+                raise ValueError(f'Unknown extraction method "{method}"')
+
+    results = func(fileobj, keywords.keys(), comment_tags,
+                   options or {})
+    for lineno, funcname, messages, comments in results:
+        if isinstance(messages, str):
+            messages = [messages]
+        if filter(None, messages):
+            if strip_comment_tags:
+                _strip_comment_tags(comments, comment_tags)
+            yield lineno, messages, comments, None
 
 
 def extract_nothing(fileobj: _FileObj, keywords: Mapping[str, _Keyword],
