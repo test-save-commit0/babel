@@ -100,4 +100,15 @@ def get_plural(locale: (str | None)=LC_CTYPE) ->_PluralTuple:
     >>> str(tup)
     'nplurals=1; plural=0;'
     """
-    pass
+    if locale is None:
+        locale = LC_CTYPE
+    
+    if isinstance(locale, str):
+        locale = Locale.parse(locale)
+    
+    try:
+        plural = PLURALS[str(locale)]
+    except KeyError:
+        plural = PLURALS.get(locale.language, DEFAULT_PLURAL)
+    
+    return _PluralTuple(plural)
