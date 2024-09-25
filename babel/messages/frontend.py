@@ -70,7 +70,16 @@ def listify_value(arg, split=None):
     :param split: The argument to pass to `str.split()`.
     :return:
     """
-    pass
+    if isinstance(arg, str):
+        return [s.strip() for s in (arg.split(split) if split else arg.split()) if s.strip()]
+    
+    result = []
+    for item in arg:
+        if isinstance(item, list):
+            result.extend(listify_value(item, split))
+        elif item is not None:
+            result.extend(listify_value(str(item), split))
+    return result
 
 
 class CommandMixin:
@@ -109,7 +118,12 @@ def _make_directory_filter(ignore_patterns):
     """
     Build a directory_filter function based on a list of ignore patterns.
     """
-    pass
+    def directory_filter(dirname):
+        for pattern in ignore_patterns:
+            if fnmatch.fnmatch(dirname, pattern):
+                return False
+        return True
+    return directory_filter
 
 
 class ExtractMessages(CommandMixin):
@@ -280,7 +294,26 @@ def parse_mapping(fileobj, filename=None):
                     text to parse
     :see: `extract_from_directory`
     """
-    pass
+    config = RawConfigParser()
+    config.read_file(fileobj)
+
+    method_map = []
+    options_map = {}
+
+    extractors = {}
+    if config.has_section('extractors'):
+        extractors = dict(config.items('extractors'))
+
+    for section in config.sections():
+        if section == 'extractors':
+            continue
+        method, pattern = section.split(':', 1)
+        method = extractors.get(method, method)
+        pattern = pattern.strip()
+        method_map.append((pattern, method))
+        options_map[pattern] = dict(config.items(section))
+
+    return method_map, options_map
 
 
 def parse_keywords(strings: Iterable[str]=()):
@@ -312,7 +345,38 @@ def parse_keywords(strings: Iterable[str]=()):
     messages. A ``None`` specification is equivalent to ``(1,)``, extracting the first
     argument.
     """
-    pass
+    def parse_spec(spec):
+        if not spec:
+            return None
+        result = []
+        for item in spec.split(','):
+            if item.endswith('c'):
+                result.append((int(item[:-1]), 'c'))
+            else:
+                result.append(int(item))
+        return tuple(result) if result else None
+
+    keywords = {}
+    for string in strings:
+        if ':' in string:
+            funcname, spec = string.split(':')
+        else:
+            funcname, spec = string, None
+
+        if 't' in spec:
+            specs = {}
+            for s in spec.split('t'):
+                if s:
+                    arg_count = int(s[-1])
+                    specs[arg_count] = parse_spec(s[:-1])
+                else:
+                    specs[None] = parse_spec(spec.rstrip('t'))
+        else:
+            specs = parse_spec(spec)
+
+        keywords[funcname] = specs
+
+    return keywords
 
 
 def __getattr__(name: str):
