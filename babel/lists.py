@@ -66,4 +66,29 @@ def format_list(lst: Sequence[str], style: Literal['standard',
     :param style: the style to format the list with. See above for description.
     :param locale: the locale
     """
-    pass
+    if not lst:
+        return ""
+    
+    if len(lst) == 1:
+        return lst[0]
+    
+    locale_obj = Locale.parse(locale) if isinstance(locale, str) else locale or DEFAULT_LOCALE
+    
+    list_patterns = locale_obj.list_patterns
+    pattern = list_patterns.get(style, list_patterns.get('standard'))
+    
+    if not pattern:
+        raise ValueError(f"List pattern style '{style}' not available for locale '{locale_obj}'")
+    
+    start = pattern['start']
+    middle = pattern['middle']
+    end = pattern['end']
+    two = pattern['2']
+    
+    if len(lst) == 2:
+        return two.format(lst[0], lst[1])
+    
+    result = start.format(lst[0], lst[1])
+    for item in lst[2:-1]:
+        result = middle.format(result, item)
+    return end.format(result, lst[-1])
