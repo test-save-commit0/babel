@@ -332,19 +332,19 @@ class NullTranslations(gettext.NullTranslations):
         """Like ``gettext()``, but look the message up in the specified
         domain.
         """
-        pass
+        return message
 
     def ldgettext(self, domain: str, message: str) ->str:
         """Like ``lgettext()``, but look the message up in the specified
         domain.
         """
-        pass
+        return message.encode(locale.getpreferredencoding())
 
     def udgettext(self, domain: str, message: str) ->str:
         """Like ``ugettext()``, but look the message up in the specified
         domain.
         """
-        pass
+        return message
     dugettext = udgettext
 
     def dngettext(self, domain: str, singular: str, plural: str, num: int
@@ -352,21 +352,22 @@ class NullTranslations(gettext.NullTranslations):
         """Like ``ngettext()``, but look the message up in the specified
         domain.
         """
-        pass
+        return singular if num == 1 else plural
 
     def ldngettext(self, domain: str, singular: str, plural: str, num: int
         ) ->str:
         """Like ``lngettext()``, but look the message up in the specified
         domain.
         """
-        pass
+        result = singular if num == 1 else plural
+        return result.encode(locale.getpreferredencoding())
 
     def udngettext(self, domain: str, singular: str, plural: str, num: int
         ) ->str:
         """Like ``ungettext()`` but look the message up in the specified
         domain.
         """
-        pass
+        return singular if num == 1 else plural
     dungettext = udngettext
     CONTEXT_ENCODING = '%s\x04%s'
 
@@ -378,14 +379,14 @@ class NullTranslations(gettext.NullTranslations):
         set, the look up is forwarded to the fallback's ``pgettext()``
         method. Otherwise, the `message` id is returned.
         """
-        pass
+        return message
 
     def lpgettext(self, context: str, message: str) ->(str | bytes | object):
         """Equivalent to ``pgettext()``, but the translation is returned in the
         preferred system encoding, if no other encoding was explicitly set with
         ``bind_textdomain_codeset()``.
         """
-        pass
+        return message.encode(locale.getpreferredencoding())
 
     def npgettext(self, context: str, singular: str, plural: str, num: int
         ) ->str:
@@ -399,7 +400,7 @@ class NullTranslations(gettext.NullTranslations):
         ``npgettext()`` method.  Otherwise, when ``num`` is 1 ``singular`` is
         returned, and ``plural`` is returned in all other cases.
         """
-        pass
+        return singular if num == 1 else plural
 
     def lnpgettext(self, context: str, singular: str, plural: str, num: int
         ) ->(str | bytes):
@@ -407,7 +408,8 @@ class NullTranslations(gettext.NullTranslations):
         preferred system encoding, if no other encoding was explicitly set with
         ``bind_textdomain_codeset()``.
         """
-        pass
+        result = singular if num == 1 else plural
+        return result.encode(locale.getpreferredencoding())
 
     def upgettext(self, context: str, message: str) ->str:
         """Look up the `context` and `message` id in the catalog and return the
@@ -416,7 +418,7 @@ class NullTranslations(gettext.NullTranslations):
         been set, the look up is forwarded to the fallback's ``upgettext()``
         method.  Otherwise, the `message` id is returned.
         """
-        pass
+        return message
 
     def unpgettext(self, context: str, singular: str, plural: str, num: int
         ) ->str:
@@ -430,20 +432,20 @@ class NullTranslations(gettext.NullTranslations):
         ``unpgettext()`` method.  Otherwise, when `num` is 1 `singular` is
         returned, and `plural` is returned in all other cases.
         """
-        pass
+        return singular if num == 1 else plural
 
     def dpgettext(self, domain: str, context: str, message: str) ->(str |
         object):
         """Like `pgettext()`, but look the message up in the specified
         `domain`.
         """
-        pass
+        return message
 
     def udpgettext(self, domain: str, context: str, message: str) ->str:
         """Like `upgettext()`, but look the message up in the specified
         `domain`.
         """
-        pass
+        return message
     dupgettext = udpgettext
 
     def ldpgettext(self, domain: str, context: str, message: str) ->(str |
@@ -452,21 +454,21 @@ class NullTranslations(gettext.NullTranslations):
         preferred system encoding, if no other encoding was explicitly set with
         ``bind_textdomain_codeset()``.
         """
-        pass
+        return message.encode(locale.getpreferredencoding())
 
     def dnpgettext(self, domain: str, context: str, singular: str, plural:
         str, num: int) ->str:
         """Like ``npgettext``, but look the message up in the specified
         `domain`.
         """
-        pass
+        return singular if num == 1 else plural
 
     def udnpgettext(self, domain: str, context: str, singular: str, plural:
         str, num: int) ->str:
         """Like ``unpgettext``, but look the message up in the specified
         `domain`.
         """
-        pass
+        return singular if num == 1 else plural
     dunpgettext = udnpgettext
 
     def ldnpgettext(self, domain: str, context: str, singular: str, plural:
@@ -475,7 +477,8 @@ class NullTranslations(gettext.NullTranslations):
         the preferred system encoding, if no other encoding was explicitly set
         with ``bind_textdomain_codeset()``.
         """
-        pass
+        result = singular if num == 1 else plural
+        return result.encode(locale.getpreferredencoding())
     ugettext = gettext.NullTranslations.gettext
     ungettext = gettext.NullTranslations.ngettext
 
@@ -549,4 +552,8 @@ def _locales_to_names(locales: (Iterable[str | Locale] | str | Locale | None)
                     this list can be either `Locale` objects or locale
                     strings)
     """
-    pass
+    if locales is None:
+        return None
+    if isinstance(locales, (Locale, str)):
+        locales = [locales]
+    return [str(locale) for locale in locales]
