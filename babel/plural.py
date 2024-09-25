@@ -107,7 +107,9 @@ class PluralRule:
         :param rules: the rules as list or dict, or a `PluralRule` object
         :raise RuleError: if the expression is malformed
         """
-        pass
+        if isinstance(rules, PluralRule):
+            return rules
+        return cls(rules)
 
     @property
     def rules(self) ->Mapping[str, str]:
@@ -117,7 +119,7 @@ class PluralRule:
         >>> rule.rules
         {'one': 'n is 1'}
         """
-        pass
+        return {tag: _Parser(expr).tokens[0][1] for tag, expr in self.abstract}
 
     @property
     def tags(self) ->frozenset[str]:
@@ -125,7 +127,7 @@ class PluralRule:
         ``'other'`` rules is not part of this set unless there is an explicit
         rule for it.
         """
-        pass
+        return frozenset(tag for tag, _ in self.abstract)
 
     def __getstate__(self) ->list[tuple[str, Any]]:
         return self.abstract
@@ -155,7 +157,16 @@ def to_javascript(rule: (Mapping[str, str] | Iterable[tuple[str, str]] |
     :param rule: the rules as list or dict, or a `PluralRule` object
     :raise RuleError: if the expression is malformed
     """
-    pass
+    if not isinstance(rule, PluralRule):
+        rule = PluralRule.parse(rule)
+    
+    compiler = _JavaScriptCompiler()
+    parts = []
+    for tag, ast in rule.abstract:
+        expr = compiler.compile(ast)
+        parts.append(f"({expr}) ? '{tag}' : ")
+    parts.append("'other'")
+    return f"(function(n) {{ return {' '.join(parts)}; }})"
 
 
 def to_python(rule: (Mapping[str, str] | Iterable[tuple[str, str]] |
@@ -178,7 +189,20 @@ def to_python(rule: (Mapping[str, str] | Iterable[tuple[str, str]] |
     :param rule: the rules as list or dict, or a `PluralRule` object
     :raise RuleError: if the expression is malformed
     """
-    pass
+    if not isinstance(rule, PluralRule):
+        rule = PluralRule.parse(rule)
+    
+    compiler = _PythonCompiler()
+    parts = []
+    for tag, ast in rule.abstract:
+        expr = compiler.compile(ast)
+        parts.append(f"if {expr}: return '{tag}'")
+    parts.append("return 'other'")
+    
+    code = '\n'.join(parts)
+    namespace = {'MOD': cldr_modulo, 'extract_operands': extract_operands}
+    exec(f"def plural(n):\n    {code}", namespace)
+    return namespace['plural']
 
 
 def to_gettext(rule: (Mapping[str, str] | Iterable[tuple[str, str]] |
@@ -192,7 +216,18 @@ def to_gettext(rule: (Mapping[str, str] | Iterable[tuple[str, str]] |
     :param rule: the rules as list or dict, or a `PluralRule` object
     :raise RuleError: if the expression is malformed
     """
-    pass
+    if not isinstance(rule, PluralRule):
+        rule = PluralRule.parse(rule)
+    
+    compiler = _GettextCompiler()
+    parts = []
+    for idx, (tag, ast) in enumerate(rule.abstract):
+        expr = compiler.compile(ast)
+        parts.append(f"({expr}) ? {idx} : ")
+    parts.append(str(len(rule.abstract)))
+    
+    plural_expr = ''.join(parts)
+    return f"nplurals={len(rule.abstract) + 1}; plural=({plural_expr});"
 
 
 def in_range_list(num: (float | decimal.Decimal), range_list: Iterable[
@@ -213,7 +248,8 @@ def in_range_list(num: (float | decimal.Decimal), range_list: Iterable[
     >>> in_range_list(10, [(1, 4), (6, 8)])
     False
     """
-    pass
+    num = int(num)
+    return any(start <= num <= end for start, end in range_list)
 
 
 def within_range_list(num: (float | decimal.Decimal), range_list: Iterable[
@@ -234,7 +270,8 @@ def within_range_list(num: (float | decimal.Decimal), range_list: Iterable[
     >>> within_range_list(10.5, [(1, 4), (20, 30)])
     False
     """
-    pass
+    num = float(num)
+    return any(start <= num <= end for start, end in range_list)
 
 
 def cldr_modulo(a: float, b: float) ->float:
