@@ -34,14 +34,28 @@ def normalize_locale(name: str) ->(str | None):
     Returns the normalized locale ID string or `None` if the ID is not
     recognized.
     """
-    pass
+    name = name.strip().lower()
+    parts = name.split('_')
+    if len(parts) == 1:
+        return parts[0]
+    elif len(parts) == 2:
+        return f"{parts[0]}_{parts[1].upper()}"
+    elif len(parts) == 3:
+        return f"{parts[0]}_{parts[1].upper()}_{parts[2].upper()}"
+    return None
 
 
 def resolve_locale_filename(name: (os.PathLike[str] | str)) ->str:
     """
     Resolve a locale identifier to a `.dat` path on disk.
     """
-    pass
+    name = os.fspath(name)
+    if _windows_reserved_name_re.match(name):
+        name = f"_{name}"
+    filename = os.path.join(_dirname, f"{name}.dat")
+    if not os.path.exists(filename):
+        raise IOError(f"No locale data file found for '{name}'")
+    return filename
 
 
 def exists(name: str) ->bool:
@@ -51,7 +65,11 @@ def exists(name: str) ->bool:
 
     :param name: the locale identifier string
     """
-    pass
+    try:
+        filename = resolve_locale_filename(name)
+        return os.path.isfile(filename)
+    except IOError:
+        return False
 
 
 @lru_cache(maxsize=None)
@@ -66,7 +84,11 @@ def locale_identifiers() ->list[str]:
 
     :return: a list of locale identifiers (strings)
     """
-    pass
+    return [
+        os.path.splitext(filename)[0]
+        for filename in os.listdir(_dirname)
+        if filename.endswith('.dat') and not filename.startswith('_')
+    ]
 
 
 def load(name: (os.PathLike[str] | str), merge_inherited: bool=True) ->dict[
@@ -95,7 +117,25 @@ def load(name: (os.PathLike[str] | str), merge_inherited: bool=True) ->dict[
     :raise `IOError`: if no locale data file is found for the given locale
                       identifier, or one of the locales it inherits from
     """
-    pass
+    global _cache
+    filename = resolve_locale_filename(name)
+    
+    with _cache_lock:
+        data = _cache.get(name)
+        if data is None:
+            with open(filename, 'rb') as fileobj:
+                data = pickle.load(fileobj)
+            _cache[name] = data
+        
+    if merge_inherited:
+        for alias in chain([data.get('alias', {}).get('target')],
+                           data.get('fallback', [])):
+            if alias:
+                merged = load(alias)
+                merge(merged, data)
+                data = merged
+    
+    return LocaleDataDict(data)
 
 
 def merge(dict1: MutableMapping[Any, Any], dict2: Mapping[Any, Any]) ->None:
@@ -110,7 +150,18 @@ def merge(dict1: MutableMapping[Any, Any], dict2: Mapping[Any, Any]) ->None:
     :param dict1: the dictionary to merge into
     :param dict2: the dictionary containing the data that should be merged
     """
-    pass
+    for key, value in dict2.items():
+        if key in dict1:
+            if isinstance(dict1[key], MutableMapping) and isinstance(value, Mapping):
+                merge(dict1[key], value)
+            else:
+                dict1[key] = value
+        else:
+            if isinstance(value, Mapping):
+                dict1[key] = {}
+                merge(dict1[key], value)
+            else:
+                dict1[key] = value
 
 
 class Alias:
