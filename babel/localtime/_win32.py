@@ -16,4 +16,12 @@ except RuntimeError:
 
 def valuestodict(key) ->dict[str, Any]:
     """Convert a registry key's values to a dictionary."""
-    pass
+    result = {}
+    size = winreg.QueryInfoKey(key)[1]
+    for i in range(size):
+        try:
+            name, data, type = winreg.EnumValue(key, i)
+            result[name] = data
+        except WindowsError:
+            break
+    return result
