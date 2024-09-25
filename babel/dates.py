@@ -52,7 +52,20 @@ def _get_dt_and_tzinfo(dt_or_tzinfo: _DtOrTzinfo) ->tuple[datetime.datetime |
 
     :rtype: tuple[datetime, tzinfo]
     """
-    pass
+    if isinstance(dt_or_tzinfo, datetime.datetime):
+        return dt_or_tzinfo, dt_or_tzinfo.tzinfo or UTC
+    elif isinstance(dt_or_tzinfo, datetime.tzinfo):
+        return None, dt_or_tzinfo
+    elif isinstance(dt_or_tzinfo, str):
+        return None, get_timezone(dt_or_tzinfo)
+    elif isinstance(dt_or_tzinfo, int):
+        return datetime.datetime.fromtimestamp(dt_or_tzinfo, UTC), UTC
+    elif isinstance(dt_or_tzinfo, datetime.time):
+        return datetime.datetime.combine(datetime.date.today(), dt_or_tzinfo), dt_or_tzinfo.tzinfo or UTC
+    elif dt_or_tzinfo is None:
+        return None, UTC
+    else:
+        raise TypeError(f"Unsupported type for dt_or_tzinfo: {type(dt_or_tzinfo)}")
 
 
 def _get_tz_name(dt_or_tzinfo: _DtOrTzinfo) ->str:
@@ -61,7 +74,15 @@ def _get_tz_name(dt_or_tzinfo: _DtOrTzinfo) ->str:
 
     :rtype: str
     """
-    pass
+    dt, tzinfo = _get_dt_and_tzinfo(dt_or_tzinfo)
+    if tzinfo is None:
+        raise ValueError("Unable to determine timezone")
+    if hasattr(tzinfo, 'zone'):
+        return tzinfo.zone
+    elif hasattr(tzinfo, 'tzname'):
+        return tzinfo.tzname(dt)
+    else:
+        return str(tzinfo)
 
 
 def _get_datetime(instant: _Instant) ->datetime.datetime:
@@ -95,7 +116,18 @@ def _get_datetime(instant: _Instant) ->datetime.datetime:
     :return: a datetime
     :rtype: datetime
     """
-    pass
+    if instant is None:
+        return datetime.datetime.now(UTC)
+    elif isinstance(instant, datetime.datetime):
+        return instant
+    elif isinstance(instant, datetime.date):
+        return datetime.datetime(instant.year, instant.month, instant.day)
+    elif isinstance(instant, datetime.time):
+        return datetime.datetime.combine(datetime.date.today(), instant)
+    elif isinstance(instant, (int, float)):
+        return datetime.datetime.fromtimestamp(instant, UTC)
+    else:
+        raise TypeError(f"Unsupported type for instant: {type(instant)}")
 
 
 def _ensure_datetime_tzinfo(dt: datetime.datetime, tzinfo: (datetime.tzinfo |
@@ -120,7 +152,13 @@ def _ensure_datetime_tzinfo(dt: datetime.datetime, tzinfo: (datetime.tzinfo |
     :return: datetime with tzinfo
     :rtype: datetime
     """
-    pass
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    
+    if tzinfo is not None and tzinfo != dt.tzinfo:
+        dt = dt.astimezone(tzinfo)
+    
+    return dt
 
 
 def _get_time(time: (datetime.time | datetime.datetime | None), tzinfo: (
@@ -133,7 +171,22 @@ def _get_time(time: (datetime.time | datetime.datetime | None), tzinfo: (
     :param time: time, datetime or None
     :rtype: time
     """
-    pass
+    if time is None:
+        time = datetime.datetime.now(UTC)
+    
+    if isinstance(time, datetime.datetime):
+        if tzinfo is not None and time.tzinfo != tzinfo:
+            time = time.astimezone(tzinfo)
+        return time.timetz()
+    elif isinstance(time, datetime.time):
+        if tzinfo is not None and time.tzinfo != tzinfo:
+            # Create a datetime to perform timezone conversion
+            dt = datetime.datetime.combine(datetime.date.today(), time)
+            dt = dt.astimezone(tzinfo)
+            return dt.timetz()
+        return time
+    else:
+        raise TypeError(f"Unsupported type for time: {type(time)}")
 
 
 def get_timezone(zone: (str | datetime.tzinfo | None)=None) ->datetime.tzinfo:
