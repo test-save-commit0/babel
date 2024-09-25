@@ -36,7 +36,17 @@ def get_unit_name(measurement_unit: str, length: Literal['short', 'long',
     :param locale: the `Locale` object or locale identifier
     :return: The unit display name, or None.
     """
-    pass
+    locale = Locale.parse(locale)
+    unit_data = locale.unit_patterns
+    
+    if measurement_unit not in unit_data:
+        raise UnknownUnitError(f"{measurement_unit}/{length}", locale)
+    
+    unit_info = unit_data[measurement_unit]
+    if length not in unit_info:
+        raise UnknownUnitError(f"{measurement_unit}/{length}", locale)
+    
+    return unit_info[length].get('name')
 
 
 def _find_unit_pattern(unit_id: str, locale: (Locale | str | None)=LC_NUMERIC
@@ -57,7 +67,17 @@ def _find_unit_pattern(unit_id: str, locale: (Locale | str | None)=LC_NUMERIC
     :param unit_id: the code of a measurement unit.
     :return: A key to the `unit_patterns` mapping, or None.
     """
-    pass
+    locale = Locale.parse(locale)
+    unit_data = locale.unit_patterns
+    
+    if unit_id in unit_data:
+        return unit_id
+    
+    for pattern in unit_data.keys():
+        if pattern.endswith(f"-{unit_id}"):
+            return pattern
+    
+    return None
 
 
 def format_unit(value: (str | float | decimal.Decimal), measurement_unit:
@@ -115,7 +135,28 @@ def format_unit(value: (str | float | decimal.Decimal), measurement_unit:
                              The special value "default" will use the default numbering system of the locale.
     :raise `UnsupportedNumberingSystemError`: If the numbering system is not supported by the locale.
     """
-    pass
+    locale = Locale.parse(locale)
+    
+    unit_pattern = _find_unit_pattern(measurement_unit, locale)
+    if unit_pattern is None:
+        raise UnknownUnitError(measurement_unit, locale)
+    
+    unit_data = locale.unit_patterns.get(unit_pattern, {}).get(length, {})
+    if not unit_data:
+        raise UnknownUnitError(f"{measurement_unit}/{length}", locale)
+    
+    if isinstance(value, str):
+        formatted_value = value
+    else:
+        formatted_value = format_decimal(value, format=format, locale=locale, numbering_system=numbering_system)
+    
+    if int(float(value)) == 1:
+        pattern = unit_data.get('one', unit_data.get('other', '{0} {1}'))
+    else:
+        pattern = unit_data.get('other', '{0} {1}')
+    
+    unit_name = get_unit_name(measurement_unit, length, locale)
+    return pattern.format(formatted_value, unit_name)
 
 
 def _find_compound_unit(numerator_unit: str, denominator_unit: str, locale:
@@ -143,7 +184,14 @@ def _find_compound_unit(numerator_unit: str, denominator_unit: str, locale:
     :return: A key to the `unit_patterns` mapping, or None.
     :rtype: str|None
     """
-    pass
+    locale = Locale.parse(locale)
+    unit_patterns = locale.unit_patterns
+    
+    for pattern in unit_patterns.keys():
+        if pattern.endswith(f"-{numerator_unit}-per-{denominator_unit}"):
+            return pattern
+    
+    return None
 
 
 def format_compound_unit(numerator_value: (str | float | decimal.Decimal),
@@ -202,4 +250,27 @@ def format_compound_unit(numerator_value: (str | float | decimal.Decimal),
     :return: A formatted compound value.
     :raise `UnsupportedNumberingSystemError`: If the numbering system is not supported by the locale.
     """
-    pass
+    locale = Locale.parse(locale)
+    
+    if isinstance(numerator_value, str):
+        formatted_numerator = numerator_value
+    elif numerator_unit:
+        formatted_numerator = format_unit(numerator_value, numerator_unit, length, format, locale, numbering_system=numbering_system)
+    else:
+        formatted_numerator = format_decimal(numerator_value, format=format, locale=locale, numbering_system=numbering_system)
+    
+    if isinstance(denominator_value, str):
+        formatted_denominator = denominator_value
+    elif denominator_unit:
+        formatted_denominator = format_unit(denominator_value, denominator_unit, length, format, locale, numbering_system=numbering_system)
+    else:
+        formatted_denominator = format_decimal(denominator_value, format=format, locale=locale, numbering_system=numbering_system)
+    
+    compound_pattern = _find_compound_unit(numerator_unit, denominator_unit, locale)
+    if compound_pattern:
+        unit_data = locale.unit_patterns.get(compound_pattern, {}).get(length, {})
+        pattern = unit_data.get('other', '{0}/{1}')
+        return pattern.format(formatted_numerator, formatted_denominator)
+    else:
+        per_pattern = locale.unit_patterns.get('per', {}).get(length, '{0}/{1}')
+        return per_pattern.format(formatted_numerator, formatted_denominator)
